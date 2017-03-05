@@ -7,7 +7,28 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
 
+#define ERROR_RATE 0.01
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <iostream>
+#include <random>
+#include <bitset>
+
 namespace caffe {
+
+template<size_t size>
+typename std::bitset<size> random_bitset( double p = 0.5) {
+	typename std::bitset<size> bits;
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::bernoulli_distribution d(p);
+	for ( int n = 0; n < size; n++ ) {
+		bits[n] = d(gen);
+	}
+	return bits;
+}
 
 template<>
 void caffe_cpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
@@ -29,6 +50,66 @@ void caffe_cpu_gemm<double>(const CBLAS_TRANSPOSE TransA,
   int ldb = (TransB == CblasNoTrans) ? N : K;
   cblas_dgemm(CblasRowMajor, TransA, TransB, M, N, K, alpha, A, lda, B,
       ldb, beta, C, N);
+}
+
+float genErrorFloat(double errorRate, float orig) {
+	union Flip
+	{
+		float input;
+		int output;
+	} data, ret;	
+	data.input = orig;
+
+	auto mask = random_bitset<sizeof(float)*8>(errorRate);
+	std::bitset<sizeof(float) * CHAR_BIT> bits(data.output);
+	ret.output = ( bits ^ mask).to_ulong();
+	return ret.input;
+}
+
+template<>
+void caffe_cpu_error_gemm<float>(const CBLAS_TRANSPOSE TransA,
+    const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
+    const float alpha, const float* A, const float* B, const float beta,
+    float* C, double errorRate) {
+  int lda = (TransA == CblasNoTrans) ? K : M;
+  int ldb = (TransB == CblasNoTrans) ? N : K;
+  cblas_sgemm(CblasRowMajor, TransA, TransB, M, N, K, alpha, A, lda, B,
+      ldb, beta, C, N);
+
+   for ( int i = 0; i < M * K; i++) {
+	float error = genErrorFloat(errorRate, C[i]);
+	C[i] = error;
+   }
+}
+
+double genErrorDouble( double errorRate, double orig) {
+	union Flip
+	{
+		double input;
+		long long output;
+	} data, ret;	
+	data.input = orig;
+
+	auto mask = random_bitset<sizeof(double)*CHAR_BIT>(errorRate);
+	std::bitset<sizeof(double) * CHAR_BIT> bits(data.output);
+	ret.output = ( bits ^ mask).to_ullong();
+	return ret.input;
+}
+
+template<>
+void caffe_cpu_error_gemm<double>(const CBLAS_TRANSPOSE TransA,
+    const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
+    const double alpha, const double* A, const double* B, const double beta,
+    double* C, double errorRate) {
+  int lda = (TransA == CblasNoTrans) ? K : M;
+  int ldb = (TransB == CblasNoTrans) ? N : K;
+  cblas_dgemm(CblasRowMajor, TransA, TransB, M, N, K, alpha, A, lda, B,
+      ldb, beta, C, N);
+
+  for ( int i = 0; i < M * K; i++ ) {
+	double error = genErrorDouble(errorRate, C[i]);
+	C[i] = error;
+  }
 }
 
 template <>

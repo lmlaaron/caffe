@@ -127,6 +127,28 @@ void caffe_cpu_gemv<double>(const CBLAS_TRANSPOSE TransA, const int M,
 }
 
 template <>
+void caffe_cpu_error_gemv<float>(const CBLAS_TRANSPOSE TransA, const int M,
+    const int N, const float alpha, const float* A, const float* x,
+    const float beta, float* y, double errorRate) {
+  cblas_sgemv(CblasRowMajor, TransA, M, N, alpha, A, N, x, 1, beta, y, 1);
+  for ( int i = 0; i < M; i++ ) {
+	double error = genErrorFloat(errorRate, y[i]);
+	y[i] = error;
+  }
+}
+
+template <>
+void caffe_cpu_error_gemv<double>(const CBLAS_TRANSPOSE TransA, const int M,
+    const int N, const double alpha, const double* A, const double* x,
+    const double beta, double* y, double errorRate) {
+  cblas_dgemv(CblasRowMajor, TransA, M, N, alpha, A, N, x, 1, beta, y, 1);
+  for ( int i = 0; i < M; i++ ) {
+	double error = genErrorDouble(errorRate, y[i]);
+	y[i] = error;
+  }
+}
+
+template <>
 void caffe_axpy<float>(const int N, const float alpha, const float* X,
     float* Y) { cblas_saxpy(N, alpha, X, 1, Y, 1); }
 

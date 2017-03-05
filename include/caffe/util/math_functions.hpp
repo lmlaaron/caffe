@@ -32,6 +32,11 @@ void caffe_cpu_gemv(const CBLAS_TRANSPOSE TransA, const int M, const int N,
     Dtype* y);
 
 template <typename Dtype>
+void caffe_cpu_error_gemv(const CBLAS_TRANSPOSE TransA, const int M, const int N,
+    const Dtype alpha, const Dtype* A, const Dtype* x, const Dtype beta,
+    Dtype* y, double errorRate);
+
+template <typename Dtype>
 void caffe_axpy(const int N, const Dtype alpha, const Dtype* X,
     Dtype* Y);
 
